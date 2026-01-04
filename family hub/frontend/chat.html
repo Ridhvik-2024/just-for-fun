@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Family Hub Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  background: #0f172a;
+  color: #e5e7eb;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chat-app {
+  width: 420px;
+  height: 640px;
+  background: #020617;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  padding: 14px 16px;
+  background: #020617;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Init */
+.init {
+  padding: 12px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  gap: 8px;
+}
+
+.init input {
+  flex: 1;
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 8px;
+  color: #e5e7eb;
+}
+
+.init button {
+  background: #2563eb;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+}
+
+.init button:hover {
+  background: #1d4ed8;
+}
+
+/* Messages */
+.messages {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message {
+  max-width: 75%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.message.me {
+  align-self: flex-end;
+  background: #2563eb;
+}
+
+.message.other {
+  align-self: flex-start;
+  background: #1e293b;
+}
+
+/* Input */
+.input-bar {
+  padding: 12px;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  gap: 8px;
+}
+
+.input-bar input {
+  flex: 1;
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: #e5e7eb;
+}
+
+.input-bar button {
+  background: #22c55e;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  color: #052e16;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.input-bar button:disabled {
+  background: #14532d;
+  cursor: not-allowed;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat-app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h2>Family Chat 🔒</h2>
+    <div id="status" class="status">Not connected</div>
+  </div>
+
+  <!-- INIT -->
+  <div class="init">
+    <input id="passphrase" type="password" placeholder="Family passphrase" />
+    <button id="initBtn">Init</button>
+  </div>
+
+  <!-- MESSAGES -->
+  <div id="messages" class="messages"></div>
+
+  <!-- INPUT -->
+  <div class="input-bar">
+    <input id="messageInput" placeholder="Type a message…" />
+    <button id="sendBtn" disabled>Send</button>
+  </div>
+
+</div>
+
+<script type="module">
+import {
+  initChat,
+  sendChatMessage,
+  connectWebSocket,
+  isSocketConnected
+} from "./js/chat.js";
+
+
+
+//const MY_USERNAME = "admin"; // must match JWT sub
+
+
+/* 🔑 PUT YOUR JWT TOKEN HERE */
+//const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2NzUzNTgwM30.K0zCU4kh8am6qpvVFtX5mVI-eCU0-tq0q5YeFi3VwSc";
+
+const TOKEN = localStorage.getItem("fh_token");
+const MY_USERNAME = localStorage.getItem("fh_username");
+
+if (!TOKEN || !MY_USERNAME) {
+  // Not logged in → go to login page
+  window.location.href = "login.html";
+}
+console.log("ME =", MY_USERNAME);
+
+
+const statusEl = document.getElementById("status");
+const messagesEl = document.getElementById("messages");
+const sendBtn = document.getElementById("sendBtn");
+const messageInput = document.getElementById("messageInput");
+
+/* ---- WebSocket state events ---- */
+window.addEventListener("ws-open", () => {
+  console.log("[UI] WebSocket connected");
+  statusEl.textContent = "Connected";
+  sendBtn.disabled = false;
+});
+
+window.addEventListener("ws-close", () => {
+  console.log("[UI] WebSocket disconnected");
+  statusEl.textContent = "Disconnected";
+  sendBtn.disabled = true;
+});
+console.log("ME =", MY_USERNAME);
+
+/* ---- Init chat ---- */
+document.getElementById("initBtn").onclick = async () => {
+  const pass = document.getElementById("passphrase").value;
+  if (!pass) return alert("Enter passphrase");
+
+  statusEl.textContent = "Connecting…";
+  sendBtn.disabled = true;
+
+  await initChat(pass);
+  connectWebSocket(TOKEN);
+};
+
+/* ---- Send message ---- */
+sendBtn.onclick = async () => {
+  if (!isSocketConnected()) {
+    alert("Not connected yet");
+    return;
+  }
+
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  sendBtn.disabled = true;
+  await sendChatMessage(null, text);
+  messageInput.value = "";
+  sendBtn.disabled = false;
+};
+
+/* ---- Render message ---- */
+function renderMessage(text, isMe) {
+  const div = document.createElement("div");
+  div.className = "message " + (isMe ? "me" : "other");
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+/* ---- Receive decrypted messages ---- */
+window.addEventListener("ws-message", (e) => {
+  const { text, sender } = e.detail;
+  const isMe = sender === MY_USERNAME;
+  renderMessage(text, isMe);
+  console.log("MSG sender =", sender);
+});
+console.log("MSG sender =", sender);
+console.log("ME =", MY_USERNAME);
+
+
+</script>
+
+</body>
+</html>
