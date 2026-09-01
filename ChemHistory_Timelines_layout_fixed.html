@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ChemHistory</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1a2b;--line:#24364d;--text:#edf5ff;--muted:#8ea3bb;--accent:#62a8ff;--accent2:#8b7cff;--bad:#ff6b7a}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,sans-serif;background:
+radial-gradient(circle at 15% 10%,rgba(98,168,255,.14),transparent 28rem),
+radial-gradient(circle at 85% 20%,rgba(139,124,255,.12),transparent 30rem),var(--bg);color:var(--text)}
+body{overflow-x:hidden}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{max-width:1280px;margin:auto;padding:28px 20px 60px}
+header{display:flex;align-items:center;gap:13px;margin-bottom:24px}.logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:23px;font-weight:800}
+h1{font-size:23px;margin:0}.tag{font-size:12px;color:var(--muted);margin-top:2px}
+.grid{display:grid;grid-template-columns:350px minmax(0,1fr);gap:18px;align-items:start}
+.card{background:linear-gradient(145deg,rgba(17,31,51,.94),rgba(10,23,39,.94));border:1px solid var(--line);border-radius:20px;padding:21px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.title{font-size:17px;font-weight:700;margin:0 0 5px}.sub{font-size:13px;color:var(--muted);margin:0 0 18px}
+.field{margin-bottom:13px}.field label{display:block;font-size:12px;font-weight:650;color:#b7c7d9;margin:0 0 7px}
+input,select,textarea{width:100%;border:1px solid #29405b;background:#081522;color:var(--text);border-radius:11px;padding:11px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#5d9de7;box-shadow:0 0 0 3px rgba(98,168,255,.1)}
+textarea{min-height:95px;resize:vertical}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.primary{border:0;background:linear-gradient(135deg,#4d98f5,#7568e8);color:white;padding:11px 16px;border-radius:11px;font-weight:700}
+.secondary,.tool{border:1px solid var(--line);background:#102239;color:#d3dfec;padding:9px 12px;border-radius:10px}
+.tool.active{background:#1b304c;border-color:#466788}.message{font-size:12px;color:var(--muted);margin-top:10px;min-height:17px}.hidden{display:none!important}
+.chapter-list{display:grid;gap:7px;margin-top:12px;max-height:260px;overflow:auto}
+.chapter{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);background:rgba(7,18,31,.7);border-radius:11px;padding:8px}
+.chapter.active{border-color:#527ca8;background:#122942}.chapter-name{border:0;background:transparent;color:var(--text);text-align:left;font-size:13px;font-weight:650;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:7px}
+.smallbtn{border:0;background:transparent;color:#8195aa;font-size:11px;padding:5px}.smallbtn:hover{color:#fff}.chapter-actions{display:flex}
+.timeline-card{overflow:hidden}.timeline-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.timeline-head input{width:230px}
+.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:3px 0}.swatch{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}.swatch i{width:10px;height:10px;border-radius:50%;display:block}
+.detail{margin-top:14px;padding:14px;border:1px solid var(--line);background:#091725;border-radius:13px}
+.detail-date{font-size:11px;color:#62a8ff;font-weight:750}.detail-title{font-size:17px;font-weight:750;margin-top:4px}.detail-desc{font-size:13px;color:#aabbd0;margin-top:7px;line-height:1.5;white-space:pre-wrap}.detail-actions{display:flex;gap:8px;margin-top:10px}
+.zoombar{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}.timeline-wrap{
+  position:relative;
+  overflow:auto;
+  min-height:620px;
+  max-height:680px;
+  padding:55px 65px 95px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#071321;
+  cursor:grab;
+  scrollbar-color:#39516c #081522;
+}
+.timeline-wrap::-webkit-scrollbar{height:11px;width:11px}
+.timeline-wrap::-webkit-scrollbar-track{background:#081522;border-radius:8px}
+.timeline-wrap::-webkit-scrollbar-thumb{background:#39516c;border-radius:8px}
+.timeline-wrap.dragging{cursor:grabbing}
+.timeline-canvas{
+  position:relative;
+  width:max-content;
+  min-width:100%;
+  min-height:530px;
+  transform-origin:top left;
+  padding:10px 20px;
+}
+.timeline{position:relative;height:500px;min-width:1100px}
+.axis{position:absolute;left:0;right:0;top:230px;height:5px;background:#506a86;border-radius:5px}
+.axis-arrow{position:absolute;right:-2px;top:-6px;border-left:11px solid #506a86;border-top:8px solid transparent;border-bottom:8px solid transparent}
+.axis-tick{position:absolute;top:214px;width:2px;height:32px;background:#506a86;transform:translateX(-50%)}.axis-tick span{position:absolute;top:35px;left:50%;transform:translateX(-50%);font-size:10px;color:#71869d;white-space:nowrap}
+.range{position:absolute;top:222px;height:17px;border-radius:9px;background:var(--range-color);opacity:.38;border:1px solid var(--range-color);z-index:1}.range-label{position:absolute;top:-26px;left:7px;font-size:10px;color:var(--range-color);font-weight:700;white-space:nowrap}
+.event{position:absolute;width:180px;transform:translateX(-50%);z-index:4}
+.event:first-of-type{z-index:5}.event.up{top:58px}.event.down{top:248px}
+.event-card{width:100%;border:1px solid var(--line);border-top:3px solid var(--event-color);background:#0b1b2c;color:var(--text);border-radius:12px;padding:10px;text-align:left;box-shadow:0 10px 28px rgba(0,0,0,.2)}
+.event-card:hover{border-color:#466788;background:#10263e}.event-title{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:18px;height:18px;border-radius:50%;background:var(--event-color);border:3px solid #081522;box-shadow:0 0 0 2px var(--event-color);position:absolute;left:50%;transform:translateX(-50%)}
+.connector{position:absolute;left:50%;width:2px;background:#526b86;transform:translateX(-50%)}.up .connector{top:18px;height:154px}.down .connector{bottom:18px;height:154px}.up .event-card{margin-bottom:172px}.down .event-card{margin-top:172px}
+.empty{text-align:center;color:var(--muted);padding:55px 10px;font-size:13px}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.timeline-head input{width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="logo">H</div><div><h1>ChemHistory</h1><div class="tag">Build separate timelines for different history chapters.</div></div></header>
+<main class="grid">
+<section class="card">
+<h2 class="title">Timelines</h2><p class="sub">Create one timeline for each chapter, topic, or unit.</p>
+<form id="timelineForm">
+<div class="field"><label for="timelineName">Timeline name</label><input id="timelineName" maxlength="60" required placeholder="e.g. Nationalism in India"></div>
+<div class="actions"><button class="primary" id="timelineSave" type="submit">+ Add timeline</button><button class="secondary hidden" id="timelineCancel" type="button">Cancel</button></div>
+</form>
+<div class="chapter-list" id="chapterList"></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
+<h2 class="title">Add event</h2><p class="sub">Events are stored inside the selected chapter.</p>
+<div class="field"><label for="precision">Date precision</label><select id="precision"><option value="year">Year only</option><option value="month">Year + month</option><option value="day" selected>Exact date</option></select></div>
+<div class="field"><label>Event type</label><div style="display:flex;gap:7px"><button type="button" class="tool active" id="singleBtn">Single date</button><button type="button" class="tool" id="rangeBtn">Date range</button></div></div>
+<form id="eventForm">
+<div class="field"><label id="startLabel" for="startDate">Date</label><input id="startDate" type="date" required></div>
+<div class="field hidden" id="endField"><label for="endDate">End date</label><input id="endDate" type="date"></div>
+<div class="field"><label for="eventTitle">Title <span style="color:#71869d">(optional)</span></label><input id="eventTitle" maxlength="90" placeholder="e.g. Gandhi launches the movement"></div>
+<div class="field"><label for="description">Short description</label><textarea id="description" maxlength="500" required placeholder="What happened?"></textarea></div>
+<div class="field hidden" id="colorField"><label for="rangeColor">Range color</label><input id="rangeColor" type="color" value="#8b7cff" style="height:44px;padding:5px"></div>
+<div class="actions"><button class="primary" id="eventSave" type="submit">+ Add event</button><button class="secondary hidden" id="eventCancel" type="button">Cancel</button></div>
+<div class="message" id="eventMsg"></div>
+</form>
+</section>
+
+<section class="card timeline-card">
+<div class="timeline-head"><div><h2 class="title" id="activeTitle">No timeline selected</h2><p class="sub">Decades plus the dates you actually selected are shown on the axis.</p></div><input id="search" placeholder="Search this timeline..."></div>
+<div class="legend"><span class="swatch"><i style="background:#62a8ff"></i>Event</span><span class="swatch"><i style="background:#8b7cff"></i>Date range</span><span style="margin-left:auto;font-size:11px;color:#71869d">Click an event for details · use the zoom controls</span></div>
+
+<div id="eventDetail" class="detail hidden">
+<div class="detail-date" id="detailDate"></div><div class="detail-title" id="detailTitle"></div><div class="detail-desc" id="detailDescription"></div>
+<div class="detail-actions"><button class="tool" type="button" id="detailEdit">Edit</button><button class="tool" type="button" id="detailDelete">Delete</button><button class="tool" type="button" id="detailClose">Close</button></div>
+</div>
+
+<div class="zoombar">
+<button type="button" class="tool" id="zoomOut">−</button>
+<button type="button" class="tool" id="zoomReset">Reset</button>
+<button type="button" class="tool" id="zoomIn">+</button>
+<span style="font-size:11px;color:#71869d;margin-left:7px">Drag the timeline to pan</span>
+</div>
+<div class="timeline-wrap" id="timelineWrap"><div class="timeline-canvas" id="timelineCanvas"><div class="timeline" id="timeline"></div></div></div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var KEY="chemhistory_timelines_v4";
+var state={timelines:[],activeTimelineId:null};
+var timelineEditId=null,eventEditId=null,eventMode="single",selectedEventId=null,zoom=1;
+var panning=false,panStartX=0,panStartY=0,scrollStartLeft=0,scrollStartTop=0;
+
+function $(id){return document.getElementById(id);}
+function uid(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+"-"+Math.random();}
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function load(){
+ try{
+  var s=JSON.parse(localStorage.getItem(KEY)||"null");
+  if(s&&Array.isArray(s.timelines)) state=s;
+ }catch(e){}
+ if(!Array.isArray(state.timelines))state.timelines=[];
+ state.timelines.forEach(function(t){
+  if(!Array.isArray(t.events))t.events=[];
+  t.events.forEach(function(e){
+   if(!e.id)e.id=uid();
+   if(!e.precision)e.precision=e.start&&e.start.length===4?"year":e.start&&e.start.length===7?"month":"day";
+  });
+ });
+ if(!state.activeTimelineId||!state.timelines.some(function(t){return t.id===state.activeTimelineId;}))
+  state.activeTimelineId=state.timelines.length?state.timelines[0].id:null;
+}
+function active(){return state.timelines.find(function(t){return t.id===state.activeTimelineId;})||null;}
+function dateValue(v,p){
+ var a=v.split("-").map(Number),y=a[0],m=a[1]||1,d=a[2]||1;
+ if(p==="year")return Date.UTC(y,0,1);
+ if(p==="month")return Date.UTC(y,m-1,1);
+ return Date.UTC(y,m-1,d);
+}
+function formatDate(v,p){
+ var a=v.split("-").map(Number),y=a[0],m=a[1]||1,d=a[2]||1;
+ if(p==="year")return String(y);
+ if(p==="month")return new Intl.DateTimeFormat("en-IN",{month:"short",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,1)));
+ return new Intl.DateTimeFormat("en-IN",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(y,m-1,d)));
+}
+function updateInputs(){
+ var p=$("precision").value,typ=p==="year"?"number":p==="month"?"month":"date";
+ $("startDate").type=typ;$("endDate").type=typ;
+ if(p==="year"){
+  $("startDate").min="1";$("startDate").max="9999";$("endDate").min="1";$("endDate").max="9999";
+  $("startDate").placeholder="e.g. 1848";$("endDate").placeholder="e.g. 1850";
+ }else{
+  $("startDate").removeAttribute("min");$("startDate").removeAttribute("max");$("endDate").removeAttribute("min");$("endDate").removeAttribute("max");
+  $("startDate").placeholder="";$("endDate").placeholder="";
+ }
+}
+function setMode(m){
+ eventMode=m;$("endField").classList.toggle("hidden",m!=="range");$("colorField").classList.toggle("hidden",m!=="range");
+ $("singleBtn").classList.toggle("active",m==="single");$("rangeBtn").classList.toggle("active",m==="range");
+ $("startLabel").textContent=m==="range"?"Start date":"Date";if(m==="single")$("endDate").value="";
+}
+function resetEvent(){
+ eventEditId=null;$("eventForm").reset();$("precision").value="day";$("rangeColor").value="#8b7cff";
+ setMode("single");updateInputs();$("eventSave").textContent="+ Add event";$("eventCancel").classList.add("hidden");$("eventMsg").textContent="";
+}
+function resetTimelineForm(){timelineEditId=null;$("timelineForm").reset();$("timelineSave").textContent="+ Add timeline";$("timelineCancel").classList.add("hidden");}
+function hideDetail(){selectedEventId=null;$("eventDetail").classList.add("hidden");}
+function showDetail(id){
+ var t=active();if(!t)return;
+ var e=t.events.find(function(x){return x.id===id;});if(!e)return;
+ selectedEventId=id;
+ $("detailDate").textContent=e.end?formatDate(e.start,e.precision)+" → "+formatDate(e.end,e.precision):formatDate(e.start,e.precision);
+ $("detailTitle").textContent=e.title||"Untitled event";
+ $("detailDescription").textContent=e.description||"";
+ $("eventDetail").classList.remove("hidden");
+}
+function editEvent(id){
+ var t=active();if(!t)return;var e=t.events.find(function(x){return x.id===id;});if(!e)return;
+ eventEditId=id;$("precision").value=e.precision||"day";updateInputs();setMode(e.end?"range":"single");
+ $("startDate").value=e.start||"";$("endDate").value=e.end||"";$("eventTitle").value=e.title||"";$("description").value=e.description||"";$("rangeColor").value=e.color||"#8b7cff";
+ $("eventSave").textContent="Save changes";$("eventCancel").classList.remove("hidden");hideDetail();
+ $("startDate").focus();
+}
+function deleteEvent(id){
+ var t=active();if(!t)return;t.events=t.events.filter(function(e){return e.id!==id;});save();hideDetail();renderTimeline();
+}
+function renderTimelines(){
+ var list=$("chapterList");
+ if(!state.timelines.length){list.innerHTML='<div class="empty" style="padding:25px 5px">No timelines yet.</div>';$("activeTitle").textContent="No timeline selected";return;}
+ list.innerHTML=state.timelines.map(function(t){
+  return '<div class="chapter '+(t.id===state.activeTimelineId?"active":"")+'"><button type="button" class="chapter-name" data-select="'+esc(t.id)+'">'+esc(t.name)+'</button><div class="chapter-actions"><button type="button" class="smallbtn" data-edit="'+esc(t.id)+'">Edit</button><button type="button" class="smallbtn" data-delete="'+esc(t.id)+'">Delete</button></div></div>';
+ }).join("");
+ var a=active();$("activeTitle").textContent=a?a.name:"No timeline selected";
+}
+function applyZoom(){
+  $("timelineCanvas").style.transform="scale("+zoom+")";
+  $("timelineCanvas").style.marginRight=Math.max(0,1100*(zoom-1))+"px";
+  $("timelineCanvas").style.marginBottom=Math.max(0,500*(zoom-1))+"px";
+}
+function renderTimeline(){
+ var t=active(),timeline=$("timeline");
+ if(!t){timeline.style.width="1100px";timeline.innerHTML='<div class="empty">Create a timeline, then add historical events.</div>';return;}
+ var q=$("search").value.trim().toLowerCase();
+ var events=t.events.filter(function(e){return !q||[e.title,e.description,e.start,e.end].join(" ").toLowerCase().indexOf(q)!==-1;});
+ if(!events.length){timeline.style.width="1100px";timeline.innerHTML='<div class="empty">No events in this timeline yet.</div>';return;}
+
+ var rank={year:1,month:2,day:3},finest="year";
+ events.forEach(function(e){var p=e.precision||"day";if(rank[p]>rank[finest])finest=p;});
+ var min=Infinity,max=-Infinity;
+ events.forEach(function(e){var p=e.precision||finest;min=Math.min(min,dateValue(e.start,p));max=Math.max(max,dateValue(e.end||e.start,p));});
+ var md=new Date(min),xd=new Date(max),my=md.getUTCFullYear(),xy=xd.getUTCFullYear();
+ if(finest==="year"){min=Date.UTC(my,0,1);max=Date.UTC(xy+1,0,1);}
+ else if(finest==="month"){min=Date.UTC(my,md.getUTCMonth(),1);max=Date.UTC(xy,xd.getUTCMonth()+1,1);}
+ else{min=Date.UTC(my,md.getUTCMonth(),md.getUTCDate());max=Date.UTC(xy,xd.getUTCMonth(),xd.getUTCDate()+1);}
+ if(max<=min)max=min+86400000;
+ var span=max-min,width=Math.max(1100,1100+events.length*75);timeline.style.width=width+"px";
+ function pct(v){return Math.max(0,Math.min(100,((v-min)/span)*100));}
+ var html='<div class="axis"><div class="axis-arrow"></div></div>';
+
+ var ticks={};
+ function addTick(v,label){if(v<min||v>max)return;var k=String(v);if(ticks[k])return;ticks[k]=1;html+='<div class="axis-tick" style="left:'+pct(v)+'%"><span>'+esc(label)+'</span></div>';}
+ var first=Math.ceil(my/10)*10;
+ for(var y=first;y<=xy;y+=10)addTick(Date.UTC(y,0,1),String(y));
+ events.forEach(function(e){var p=e.precision||finest;addTick(dateValue(e.start,p),formatDate(e.start,p));if(e.end)addTick(dateValue(e.end,p),formatDate(e.end,p));});
+
+ events.forEach(function(e,i){
+  var p=e.precision||finest,s=pct(dateValue(e.start,p)),en=pct(dateValue(e.end||e.start,p));
+  if(e.end){var l=Math.min(s,en),r=Math.max(s,en);html+='<div class="range" style="left:'+l+'%;width:'+Math.max(1.2,r-l)+'%;--range-color:'+esc(e.color||"#8b7cff")+'"><div class="range-label">'+esc(e.title||"Period")+'</div></div>';}
+  var pos=e.end?(s+en)/2:s,side=i%2===0?"up":"down";
+  html+='<div class="event '+side+'" data-event-id="'+esc(e.id)+'" style="left:'+Math.max(2,Math.min(98,pos))+'%;--event-color:'+esc(e.color||"#62a8ff")+'"><button type="button" class="event-card"><div class="event-title">'+esc(e.title||e.description.slice(0,40))+'</div></button><div class="connector"></div><div class="dot"></div></div>';
+ });
+ timeline.innerHTML=html;
+ timeline.querySelectorAll("[data-event-id]").forEach(function(node){
+  node.querySelector(".event-card").addEventListener("click",function(e){e.stopPropagation();showDetail(node.getAttribute("data-event-id"));});
+ });
+ applyZoom();
+}
+
+$("timelineForm").addEventListener("submit",function(e){
+ e.preventDefault();var name=$("timelineName").value.trim();if(!name)return;
+ if(timelineEditId){var t=state.timelines.find(function(x){return x.id===timelineEditId;});if(t)t.name=name;}
+ else{var nt={id:uid(),name:name,events:[]};state.timelines.push(nt);state.activeTimelineId=nt.id;}
+ save();resetTimelineForm();renderTimelines();renderTimeline();
+});
+$("timelineCancel").addEventListener("click",resetTimelineForm);
+$("chapterList").addEventListener("click",function(e){
+ var s=e.target.getAttribute("data-select"),ed=e.target.getAttribute("data-edit"),del=e.target.getAttribute("data-delete");
+ if(s){state.activeTimelineId=s;$("search").value="";resetEvent();hideDetail();zoom=1;applyZoom();save();renderTimelines();renderTimeline();return;}
+ if(ed){var t=state.timelines.find(function(x){return x.id===ed;});if(!t)return;timelineEditId=ed;$("timelineName").value=t.name;$("timelineSave").textContent="Save timeline";$("timelineCancel").classList.remove("hidden");$("timelineName").focus();return;}
+ if(del){var d=state.timelines.find(function(x){return x.id===del;});if(!d)return;if(!confirm('Delete timeline "'+d.name+'" and all its events?'))return;state.timelines=state.timelines.filter(function(x){return x.id!==del;});if(state.activeTimelineId===del)state.activeTimelineId=state.timelines.length?state.timelines[0].id:null;save();resetEvent();hideDetail();renderTimelines();renderTimeline();}
+});
+$("precision").addEventListener("change",updateInputs);
+$("singleBtn").addEventListener("click",function(){setMode("single");});
+$("rangeBtn").addEventListener("click",function(){setMode("range");});
+$("eventCancel").addEventListener("click",resetEvent);
+$("eventForm").addEventListener("submit",function(e){
+ e.preventDefault();var t=active();if(!t){$("eventMsg").textContent="Create or select a timeline first.";return;}
+ var p=$("precision").value,rs=$("startDate").value.trim(),re=$("endDate").value.trim(),title=$("eventTitle").value.trim(),desc=$("description").value.trim();
+ if(!rs||!desc){$("eventMsg").textContent="Date and description are required.";return;}
+ if(p==="year"){
+  if(!/^\d{1,4}$/.test(rs)||Number(rs)<1){$("eventMsg").textContent="Enter a valid year.";return;}
+  if(eventMode==="range"&&(!/^\d{1,4}$/.test(re)||Number(re)<1)){$("eventMsg").textContent="Enter a valid end year.";return;}
+ }
+ if(eventMode==="range"&&!re){$("eventMsg").textContent="End date is required for a range.";return;}
+ var start=p==="year"?rs.padStart(4,"0"):rs,end=eventMode==="range"?(p==="year"?re.padStart(4,"0"):re):null;
+ if(eventMode==="range"&&dateValue(end,p)<dateValue(start,p)){$("eventMsg").textContent="End date must be on or after the start date.";return;}
+ var data={start:start,end:end,precision:p,title:title,description:desc,color:eventMode==="range"?$("rangeColor").value:"#62a8ff"};
+ if(eventEditId){var old=t.events.find(function(x){return x.id===eventEditId;});if(old)Object.assign(old,data);}
+ else t.events.push(Object.assign({id:uid()},data));
+ t.events.sort(function(a,b){return dateValue(a.start,a.precision)-dateValue(b.start,b.precision);});
+ save();resetEvent();renderTimeline();
+});
+$("search").addEventListener("input",function(){hideDetail();renderTimeline();});
+$("zoomIn").addEventListener("click",function(){zoom=Math.min(3,zoom*1.2);applyZoom();});
+$("zoomOut").addEventListener("click",function(){zoom=Math.max(.65,zoom/1.2);applyZoom();});
+$("zoomReset").addEventListener("click",function(){
+  zoom=1;
+  applyZoom();
+  $("timelineWrap").scrollLeft=0;
+  $("timelineWrap").scrollTop=0;
+});
+$("timelineWrap").addEventListener("wheel",function(e){e.preventDefault();zoom=Math.max(.65,Math.min(3,zoom*(e.deltaY<0?1.12:.89)));applyZoom();},{passive:false});
+$("detailClose").addEventListener("click",hideDetail);
+$("detailEdit").addEventListener("click",function(){if(selectedEventId)editEvent(selectedEventId);});
+$("detailDelete").addEventListener("click",function(){if(selectedEventId)deleteEvent(selectedEventId);});
+
+$("timelineWrap").addEventListener("pointerdown",function(e){
+  if(e.button!==0)return;
+  if(e.target.closest("button"))return;
+
+  panning=true;
+  $("timelineWrap").classList.add("dragging");
+  panStartX=e.clientX;
+  panStartY=e.clientY;
+  scrollStartLeft=$("timelineWrap").scrollLeft;
+  scrollStartTop=$("timelineWrap").scrollTop;
+
+  try{$("timelineWrap").setPointerCapture(e.pointerId);}catch(_){}
+});
+
+$("timelineWrap").addEventListener("pointermove",function(e){
+  if(!panning)return;
+  $("timelineWrap").scrollLeft=scrollStartLeft-(e.clientX-panStartX);
+  $("timelineWrap").scrollTop=scrollStartTop-(e.clientY-panStartY);
+});
+
+$("timelineWrap").addEventListener("pointerup",function(e){
+  panning=false;
+  $("timelineWrap").classList.remove("dragging");
+  try{$("timelineWrap").releasePointerCapture(e.pointerId);}catch(_){}
+});
+
+$("timelineWrap").addEventListener("pointercancel",function(){
+  panning=false;
+  $("timelineWrap").classList.remove("dragging");
+});
+
+$("timelineWrap").addEventListener("wheel",function(e){
+  if(e.ctrlKey)return;
+  e.preventDefault();
+
+  var oldZoom=zoom;
+  var next= e.deltaY < 0 ? zoom*1.1 : zoom/1.1;
+  zoom=Math.max(.7,Math.min(2.8,next));
+
+  var rect=$("timelineWrap").getBoundingClientRect();
+  var mouseX=e.clientX-rect.left+$("timelineWrap").scrollLeft;
+  var mouseY=e.clientY-rect.top+$("timelineWrap").scrollTop;
+
+  applyZoom();
+
+  $("timelineWrap").scrollLeft=Math.max(
+    0,
+    mouseX*(zoom/oldZoom)-(e.clientX-rect.left)
+  );
+  $("timelineWrap").scrollTop=Math.max(
+    0,
+    mouseY*(zoom/oldZoom)-(e.clientY-rect.top)
+  );
+},{passive:false});
+
+load();updateInputs();setMode("single");renderTimelines();renderTimeline();
+})();
+</script>
+</body>
+</html>
